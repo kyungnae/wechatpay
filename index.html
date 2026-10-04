@@ -247,7 +247,14 @@
   // ★ 여기에 앱스 스크립트 웹 앱 URL(…/exec)을 붙여넣으세요 ★
   var API_URL = 'https://script.google.com/macros/s/AKfycbxWFOmjmJ1HT8bK38EM6EIUnpEZBD3RffwoPnFDQ_TXOI258mwlkaIDfr4UJZnDtjCj4g/exec';
 
-  var PRODUCTS = [];
+  // 기본 상점 이름·상품 (페이지가 바로 뜨도록 미리 넣어 둔 값 — Code.gs 와 같게 유지하면 좋아요)
+  var STORE_NAME = '平泽迈斯特高中';
+  var PRODUCTS = [
+    { id: 'wafer', zh: '巧克力威化饼', price: 15, img: '' },
+    { id: 'abc',   zh: 'ABC巧克力',   price: 12, img: '' },
+    { id: 'grape', zh: '青葡萄味硬糖', price: 8,  img: '' },
+    { id: 'soft',  zh: '水果味软糖',   price: 5,  img: '' }
+  ];
   var MIN_LOADING = 3000;
 
   // 기본 상품 그림 (Code.gs 에서 img 주소를 넣으면 그 사진이 대신 나옵니다)
@@ -288,16 +295,23 @@
     return fetch(url, opt).then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   }
 
+  function setStoreName(n){
+    Array.prototype.forEach.call(document.querySelectorAll('.store-name'), function(el){ el.textContent = n; });
+  }
+
+  // 화면은 기본 목록으로 바로 보여 주고, 서버 설정은 뒤에서 받아 와 바뀐 점만 반영합니다.
+  // (이 요청이 서버를 미리 깨워 두어서, 결제할 때 응답도 빨라집니다)
   function loadConfig(){
-    $('goods').innerHTML = '<div class="state">加载中…</div>';
+    setStoreName(STORE_NAME);
+    renderGoods();
     api('GET').then(function(cfg){
-      PRODUCTS = cfg.products || [];
-      Array.prototype.forEach.call(document.querySelectorAll('.store-name'), function(el){ el.textContent = cfg.storeName || ''; });
-      renderGoods();
-    }).catch(function(){
-      $('goods').innerHTML = '<div class="state">网络异常<br><button id="retry">重新加载</button></div>';
-      $('retry').addEventListener('click', loadConfig);
-    });
+      var next = cfg.products || [];
+      if (cfg.storeName && cfg.storeName !== STORE_NAME){ STORE_NAME = cfg.storeName; setStoreName(STORE_NAME); }
+      if (next.length && JSON.stringify(next) !== JSON.stringify(PRODUCTS)){
+        PRODUCTS = next;
+        renderGoods();
+      }
+    }).catch(function(){ /* 기본 목록으로 계속 진행 */ });
   }
   function pickGood(p){
     good = p; amt = ''; renderAmt();
